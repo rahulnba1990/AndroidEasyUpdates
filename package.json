@@ -1,6 +1,6 @@
 {
   "name": "react-native-android-easy-updates",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Android in app updates made easy for react native developers",
   "main": "index.js",
   "scripts": {

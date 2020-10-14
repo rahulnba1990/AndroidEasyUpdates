@@ -38,22 +38,19 @@ public class RNAndroidEasyUpdatesModule extends ReactContextBaseJavaModule imple
     private ActivityEventListener activityEventListener = new BaseActivityEventListener() {
         @Override
         public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) {
-            try {
-                if (requestCode == UPDATE_REQUEST_CODE) {
-                    if (resultCode != RESULT_OK) {
-                        mPromise.resolve("FAILED");
-                        System.out.println("InAppUpdate Update flow failed! Result code: " + resultCode);
-                        // If the update is cancelled or fails,
-                        // you can request to start the update again.
-                    } else {
-                        mPromise.resolve("COMPLETED");
+            if(mPromise != null) {
+                try {
+                    if (requestCode == UPDATE_REQUEST_CODE) {
+                        if (resultCode != RESULT_OK) {
+                            mPromise.resolve("FAILED");
+                        } else {
+                            mPromise.resolve("COMPLETED");
+                        }
                     }
-                }
-            } catch (Exception e) {
-                if (mPromise != null) {
+                } catch (Exception e) {
                     mPromise.resolve("UPDATE_FAILED");
+                    e.printStackTrace();
                 }
-                e.printStackTrace();
             }
         }
     };
