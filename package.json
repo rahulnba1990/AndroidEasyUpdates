@@ -1,0 +1,26 @@
+{
+  "name": "react-native-android-easy-updates",
+  "version": "1.0.0",
+  "description": "Android in app updates made easy for react native developers",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "react-native"
+  ],
+  "author": "Rahul Singh",
+  "license": "",
+  "peerDependencies": {
+    "react-native": "^0.41.2",
+    "react-native-windows": "0.41.0-rc.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rahulnba1990/AndroidEasyUpdates.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rahulnba1990/AndroidEasyUpdates/issues"
+  },
+  "homepage": "https://github.com/rahulnba1990/AndroidEasyUpdates#readme"
+}
