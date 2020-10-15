@@ -43,7 +43,7 @@ repositories {
 }
 
 dependencies {
-    api 'com.android.support:design:28.0.0'
+    api 'com.google.android.material:material:1.2.1'
     api 'com.facebook.react:react-native:+'
     api 'com.google.android.play:core:1.8.2'
 
