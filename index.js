@@ -5,12 +5,8 @@ const { RNAndroidEasyUpdates } = NativeModules;
 
 class AndroidEasyUpdates {
 
-    static checkUpdateAvailability(updateType) {
-        return RNAndroidEasyUpdates.checkUpdateAvailability(updateType);
-    }
-
-    static completeUpdate() {
-        return RNAndroidEasyUpdates.completeUpdate();
+    static checkUpdateAvailability(stalenessDays) {
+        return RNAndroidEasyUpdates.checkUpdateAvailability(stalenessDays);
     }
 }
 

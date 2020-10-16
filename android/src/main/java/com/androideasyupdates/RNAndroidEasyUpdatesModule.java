@@ -4,19 +4,12 @@ package com.androideasyupdates;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.IntentSender;
-
-import androidx.annotation.Nullable;
-
-import com.google.android.material.snackbar.Snackbar;
-
 import android.graphics.Color;
-
-import androidx.coordinatorlayout.widget.CoordinatorLayout;
-
-import android.os.Bundle;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.Toast;
+
+import androidx.annotation.Nullable;
 
 import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Arguments;
@@ -29,30 +22,28 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
+import com.google.android.material.snackbar.Snackbar;
 import com.google.android.play.core.appupdate.AppUpdateInfo;
 import com.google.android.play.core.appupdate.AppUpdateManager;
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory;
-import com.google.android.play.core.appupdate.AppUpdateOptions;
-import com.google.android.play.core.common.IntentSenderForResultStarter;
 import com.google.android.play.core.install.InstallState;
 import com.google.android.play.core.install.InstallStateUpdatedListener;
 import com.google.android.play.core.install.model.AppUpdateType;
 import com.google.android.play.core.install.model.InstallStatus;
 import com.google.android.play.core.install.model.UpdateAvailability;
-import com.google.android.play.core.tasks.Task;
+import com.google.android.play.core.tasks.OnSuccessListener;
 
 import java.util.Objects;
 
 import static android.app.Activity.RESULT_OK;
 
-public class RNAndroidEasyUpdatesModule extends ReactContextBaseJavaModule implements InstallStateUpdatedListener, LifecycleEventListener {
+public class RNAndroidEasyUpdatesModule extends ReactContextBaseJavaModule implements InstallStateUpdatedListener, LifecycleEventListener, OnSuccessListener {
 
     private final ReactApplicationContext reactContext;
     private AppUpdateManager appUpdateManager;
-    private final int DAYS_FOR_FLEXIBLE_UPDATE = 10;
+    private static int DAYS_FOR_FLEXIBLE_UPDATE = 10;
     private final int UPDATE_REQUEST_CODE = 985;
     private Promise mPromise;
-    private int updateType;
 
     private ActivityEventListener activityEventListener = new BaseActivityEventListener() {
         @Override
@@ -87,66 +78,41 @@ public class RNAndroidEasyUpdatesModule extends ReactContextBaseJavaModule imple
     }
 
     @ReactMethod
-    public void checkUpdateAvailability(String type, Promise promise) {
-        // Creates instance of the manager.
+    public void checkUpdateAvailability(String stalenessDays, Promise promise) {
+        if (stalenessDays != null) {
+            DAYS_FOR_FLEXIBLE_UPDATE = Integer.parseInt(stalenessDays);
+        }
         mPromise = promise;
-        updateType = ("IMMEDIATE".equalsIgnoreCase(type)) ? AppUpdateType.IMMEDIATE : AppUpdateType.FLEXIBLE;
-        appUpdateManager = AppUpdateManagerFactory.create(reactContext);
+        appUpdateManager = AppUpdateManagerFactory.create(this.getCurrentActivity());
         appUpdateManager.registerListener(this);
-        Task<AppUpdateInfo> appUpdateInfoTask = appUpdateManager.getAppUpdateInfo();
-        appUpdateInfoTask.addOnSuccessListener(appUpdateInfo -> {
-            if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE
-                    && appUpdateInfo.clientVersionStalenessDays() != null
-                    && appUpdateInfo.clientVersionStalenessDays() > DAYS_FOR_FLEXIBLE_UPDATE
-                    && appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE)) {
-                try {
-                    IntentSenderForResultStarter intentSenderForResultStarter = new IntentSenderForResultStarter() {
-                        @Override
-                        public void startIntentSenderForResult(IntentSender intent, int requestCode, Intent fillInIntent, int flagsMask, int flagsValues, int extraFlags, Bundle options) throws IntentSender.SendIntentException {
+        appUpdateManager.getAppUpdateInfo().addOnSuccessListener(this);
+    }
 
-                        }
-                    };
-                    /*appUpdateManager.startUpdateFlowForResult(appUpdateInfo, AppUpdateType.IMMEDIATE,
-                            this.getCurrentActivity(),
-                            UPDATE_REQUEST_CODE);*/
-                    appUpdateManager.startUpdateFlowForResult(appUpdateInfo, AppUpdateType.IMMEDIATE,
-                            intentSenderForResultStarter,
-                            UPDATE_REQUEST_CODE);
+    @Override
+    public void onSuccess(Object result) {
+        AppUpdateInfo appUpdateInfo = (AppUpdateInfo) result;
+        if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE
+                && appUpdateInfo.clientVersionStalenessDays() != null
+                && appUpdateInfo.clientVersionStalenessDays() > DAYS_FOR_FLEXIBLE_UPDATE
+                && appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE)) {
+            try {
+                appUpdateManager.startUpdateFlowForResult(appUpdateInfo, AppUpdateType.IMMEDIATE,
+                        this.getCurrentActivity(),
+                        UPDATE_REQUEST_CODE);
+            } catch (IntentSender.SendIntentException e) {
+                e.printStackTrace();
+            }
+        } else {
+            if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE
+                    && appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE)) {
+                try {
+                    Toast.makeText(reactContext, "FLEXIBLE", Toast.LENGTH_SHORT).show();
+                    appUpdateManager.startUpdateFlowForResult(appUpdateInfo, AppUpdateType.FLEXIBLE,
+                            this.getCurrentActivity(), UPDATE_REQUEST_CODE);
                 } catch (IntentSender.SendIntentException e) {
                     e.printStackTrace();
                 }
-            } else {
-                if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE
-                        && appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE)) {
-                    try {
-                        appUpdateManager.startUpdateFlowForResult(appUpdateInfo, AppUpdateType.FLEXIBLE,
-                                this.getCurrentActivity(), UPDATE_REQUEST_CODE);
-                    } catch (IntentSender.SendIntentException e) {
-                        e.printStackTrace();
-                    }
-                }
             }
-
-        });
-        /*appUpdateInfoTask.addOnSuccessListener(appUpdateInfo -> {
-            if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE) {
-                if (appUpdateInfo.isUpdateTypeAllowed(updateType)) {
-                    try {
-                        appUpdateManager.startUpdateFlowForResult(appUpdateInfo, updateType,
-                                this.getCurrentActivity(), UPDATE_REQUEST_CODE);
-                    } catch (IntentSender.SendIntentException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        });*/
-    }
-
-    @ReactMethod
-    public void completeUpdate() {
-        Toast.makeText(reactContext, "completeUpdate called", Toast.LENGTH_LONG).show();
-        if (appUpdateManager != null) {
-            appUpdateManager.completeUpdate();
         }
     }
 
@@ -155,18 +121,22 @@ public class RNAndroidEasyUpdatesModule extends ReactContextBaseJavaModule imple
         if (state.installStatus() == InstallStatus.DOWNLOADING) {
             long bytesDownloaded = state.bytesDownloaded();
             long totalBytesToDownload = state.totalBytesToDownload();
-            //long percentage = (bytesDownloaded / totalBytesToDownload) * 100;
+            double percentage = ((double) bytesDownloaded / totalBytesToDownload) * 100;
             WritableMap params = Arguments.createMap();
-            String data = Long.valueOf(bytesDownloaded).toString() + "/" + Long.valueOf(totalBytesToDownload).toString();
-            params.putString("updateProgress", data);
+            params.putString("updateProgress", Double.valueOf(percentage).intValue() + "%");
             sendEvent(reactContext, "APP_UPDATE", params);
-
         }
         if (state.installStatus() == InstallStatus.DOWNLOADED) {
             popupSnackbarForCompleteUpdate();
             WritableMap params = Arguments.createMap();
-            params.putString("UPDATE_COMPLETED", "");
+            params.putString("UPDATE_DOWNLOADED", "");
             sendEvent(reactContext, "APP_UPDATE", params);
+        }
+        if (state.installStatus() == InstallStatus.INSTALLED) {
+            WritableMap params = Arguments.createMap();
+            params.putString("INSTALL_SUCCESS", "");
+            sendEvent(reactContext, "APP_UPDATE", params);
+            appUpdateManager.unregisterListener(this);
         }
     }
 
